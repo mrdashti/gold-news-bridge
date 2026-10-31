@@ -1,0 +1,28 @@
+name: news-bridge
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch public channels metadata
+        run: python bridge/news_bridge.py news_latest.json
+      - name: Publish to news branch (single-commit, force push)
+        run: |
+          git config user.name "news-bridge"
+          git config user.email "news-bridge@users.noreply.github.com"
+          git checkout --orphan news_tmp
+          git add -f news_latest.json
+          git commit -m "news update $(date -u +%FT%TZ)" || echo "no changes"
+          git push -f origin news_tmp:news
